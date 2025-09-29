@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
-import { kv } from '@vercel/kv'
+import * as fs from 'fs'
+import * as path from 'path'
 
 // 验证管理员token
 function verifyAdminToken(request: NextRequest) {
@@ -27,6 +28,43 @@ function verifyAdminToken(request: NextRequest) {
   }
 }
 
+// 本地存储文件路径
+const DATA_FILE = path.join(process.cwd(), 'data', 'whitelist.json')
+
+// 确保数据目录存在
+function ensureDataDir() {
+  const dataDir = path.dirname(DATA_FILE)
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true })
+  }
+}
+
+// 获取白名单
+function getWhitelist(): string[] {
+  try {
+    ensureDataDir()
+    if (fs.existsSync(DATA_FILE)) {
+      const data = fs.readFileSync(DATA_FILE, 'utf8')
+      return JSON.parse(data) || []
+    }
+    return []
+  } catch (error) {
+    console.error('读取白名单失败:', error)
+    return []
+  }
+}
+
+// 保存白名单
+function saveWhitelist(whitelist: string[]) {
+  try {
+    ensureDataDir()
+    fs.writeFileSync(DATA_FILE, JSON.stringify(whitelist, null, 2))
+  } catch (error) {
+    console.error('保存白名单失败:', error)
+    throw error
+  }
+}
+
 // 获取用户列表
 export async function GET(request: NextRequest) {
   try {
@@ -34,7 +72,7 @@ export async function GET(request: NextRequest) {
     verifyAdminToken(request)
 
     // 获取用户白名单
-    const whitelist = await kv.get('user_whitelist') as string[] || []
+    const whitelist = getWhitelist()
 
     return NextResponse.json({
       success: true,
@@ -68,7 +106,7 @@ export async function POST(request: NextRequest) {
     const cleanUsername = username.toLowerCase().trim()
 
     // 获取当前白名单
-    const whitelist = await kv.get('user_whitelist') as string[] || []
+    const whitelist = getWhitelist()
 
     // 检查用户是否已存在
     if (whitelist.includes(cleanUsername)) {
@@ -80,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     // 添加用户到白名单
     const newWhitelist = [...whitelist, cleanUsername]
-    await kv.set('user_whitelist', newWhitelist)
+    saveWhitelist(newWhitelist)
 
     return NextResponse.json({
       success: true,
@@ -114,7 +152,7 @@ export async function DELETE(request: NextRequest) {
     const cleanUsername = username.toLowerCase().trim()
 
     // 获取当前白名单
-    const whitelist = await kv.get('user_whitelist') as string[] || []
+    const whitelist = getWhitelist()
 
     // 检查用户是否存在
     if (!whitelist.includes(cleanUsername)) {
@@ -126,7 +164,7 @@ export async function DELETE(request: NextRequest) {
 
     // 从白名单中移除用户
     const newWhitelist = whitelist.filter(u => u !== cleanUsername)
-    await kv.set('user_whitelist', newWhitelist)
+    saveWhitelist(newWhitelist)
 
     return NextResponse.json({
       success: true,
