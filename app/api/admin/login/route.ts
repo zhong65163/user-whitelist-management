@@ -11,6 +11,12 @@ export async function POST(request: NextRequest) {
     const jwtSecret = process.env.JWT_SECRET
 
     if (!adminUsername || !adminPassword || !jwtSecret) {
+      console.log('Environment check:', {
+        hasAdminUsername: !!adminUsername,
+        hasAdminPassword: !!adminPassword,
+        hasJwtSecret: !!jwtSecret,
+        adminUsername: adminUsername || 'MISSING'
+      })
       return NextResponse.json({
         success: false,
         error: '服务器配置错误'
