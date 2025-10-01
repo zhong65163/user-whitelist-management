@@ -10,16 +10,17 @@ export async function POST(request: NextRequest) {
     const adminPassword = process.env.ADMIN_PASSWORD
     const jwtSecret = process.env.JWT_SECRET
 
+    // Debug: 返回环境变量状态给前端
     if (!adminUsername || !adminPassword || !jwtSecret) {
-      console.log('Environment check:', {
-        hasAdminUsername: !!adminUsername,
-        hasAdminPassword: !!adminPassword,
-        hasJwtSecret: !!jwtSecret,
-        adminUsername: adminUsername || 'MISSING'
-      })
       return NextResponse.json({
         success: false,
-        error: '服务器配置错误'
+        error: '服务器配置错误',
+        debug: {
+          hasAdminUsername: !!adminUsername,
+          hasAdminPassword: !!adminPassword,
+          hasJwtSecret: !!jwtSecret,
+          adminUsername: adminUsername || 'MISSING'
+        }
       }, { status: 500 })
     }
 
